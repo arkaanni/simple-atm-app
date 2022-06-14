@@ -30,35 +30,68 @@ public class App {
     }
 
     void authenticate() {
-        System.out.println("Enter your card name:");
-        String username = stdIn.next();
-        Optional<Card> auth = atmRepository.findOne(username);
+        System.out.println("Enter your account number:");
+        String accountNumber = stdIn.next();
+        if (!validateAuth(accountNumber, "Account Number")) return;
+        System.out.println("Enter your pin:");
+        String pin = stdIn.next();
+        if (!validateAuth(pin, "PIN")) return;
+        Optional<Card> auth = atmRepository.findOne(Integer.valueOf(accountNumber));
+        boolean isValid = false;
         if (auth.isPresent()) {
             Card card = auth.get();
-            System.out.println("Enter your pin:");
-            String pin = stdIn.next();
-            if (pin.equals(card.getPin())) {
+            if (Integer.valueOf(pin).equals(card.getPin())) {
                 setCurrentUser(card);
                 state = State.AUTHENTICATED;
-            } else {
-                System.out.println("Wrong pin");
+                isValid = true;
             }
-        } else {
-            System.out.println("Invalid account");
         }
+        if (!isValid) System.out.println("Invalid account number / pin");
+    }
+    
+    private boolean validateAuth(String input, String s) {
+	if (input.length() != 6) {
+	    System.out.printf("%s should have 6 digits length%n", s);
+	    return false;
+	}
+	if (!input.matches("^[0-9]+")) {
+	    System.out.printf("%s should only contains number%n", s);
+	    return false;
+	}
+	return true;
     }
 
-    void withdrawMoney() {
-        double[] amountList = {50_000, 100_000, 500_000};
-        System.out.println("==============");
-        System.out.println("1. Rp. 50000");
-        System.out.println("2. Rp. 100000");
-        System.out.println("3. Rp. 500000");
+    private void withdrawMoney() {
+        Integer[] amountList = {10, 50, 100};
+        System.out.println("==============\n1. $10\n2. $50\n3. $100\n4. Other\n5. Back\n");
         System.out.print("Choose amount: ");
-        int amount = stdIn.nextInt();
+        int amountSelect = stdIn.nextInt();
+        int amount;
+        if (amountSelect == 4) {
+            while (true) {
+        	System.out.print("Enter amount: ");
+        	String amountInput = stdIn.next();
+                if (!amountInput.matches("^[0-9]+")) {
+                    System.out.println("Invalid amount");
+                    continue;
+                }
+                amount = Integer.valueOf(amountInput);
+                if (amount % 10 != 0) {
+                    System.out.println("Invalid amount");
+                    continue;
+                }
+                if (amount > 1000.0) {
+                    System.out.println("Maximum amount to withdraw is $1000");
+                    continue;
+                }
+                break;
+            }
+        } else {
+            amount = amountList[amountSelect];
+        }
         try {
             Transaction.Status status = atmRepository
-                    .withdrawMoney(amountList[amount - 1], currentUser);
+                    .withdrawMoney(amount, currentUser);
             if (status == Transaction.Status.FAILED) {
                 System.out.println("Withdraw failed.");
             } else {
@@ -69,13 +102,9 @@ public class App {
         }
     }
 
-    void depositMoney() {
-        double[] amountList = {50_000, 100_000, 500_000};
-        System.out.println("==============");
-        System.out.println("1. Rp. 50000");
-        System.out.println("2. Rp. 100000");
-        System.out.println("3. Rp. 500000");
-        System.out.print("Choose amount: ");
+    private void depositMoney() {
+        Integer[] amountList = {10, 50, 100};
+        System.out.println("==============\n1. $10\n2. $50\n3. $100\n4. Other\n5. Back\n");
         int amount = stdIn.nextInt();
         try {
             Transaction.Status status = atmRepository
@@ -90,13 +119,13 @@ public class App {
         }
     }
 
-    void transferMoney() {
+    private void transferMoney() {
         System.out.println("=================");
-        System.out.println("[ Transfer money ]");
+        System.out.println("[  Fund Transfer  ]");
         System.out.print("Enter account number (destination): ");
         String recipient = stdIn.next();
         System.out.print("Enter amount: ");
-        double amount = stdIn.nextDouble();
+        int amount = stdIn.nextInt();
         Transaction.Status status = atmRepository
                 .transferMoney(amount, currentUser, Long.valueOf(recipient));
         if (status == Transaction.Status.FAILED) {
@@ -106,12 +135,12 @@ public class App {
         }
     }
 
-    void viewTransactionHistory() {
+    private void viewTransactionHistory() {
         atmRepository.displayTransactionHistory(currentUser);
 
     }
 
-    void getBalance() {
+    private void getBalance() {
         System.out.printf("%s%f\n", "Your balance: Rp. ", currentUser.getAccountBalance());
     }
 
@@ -126,7 +155,7 @@ public class App {
             System.out.println("||     Welcome     ||");
             System.out.println("=====================");
             System.out.println("1. Withdraw Money");
-            System.out.println("2. Transfer Money");
+            System.out.println("2. Fund Transfer");
             System.out.println("3. Deposit Money");
             System.out.println("4. View Balance");
             System.out.println("5. Transaction History");
@@ -167,9 +196,9 @@ class SimpleAtm {
 
     public static void main(String[] args) {
         ATMRepository atmRepository = new ATMRepository();
-        atmRepository.addAccount(new Card("123456", "user1", 1_000_000, "0776648292736"));
-        atmRepository.addAccount(new Card("123456", "user2", 1_000_000, "0774924824224"));
-        atmRepository.addAccount(new Card("123456", "user3", 1_000_000, "0777103938848"));
+        atmRepository.addAccount(new Card(123456, "user1", 1_000_000, 776643));
+        atmRepository.addAccount(new Card(123456, "user2", 1_000_000, 774921));
+        atmRepository.addAccount(new Card(123456, "user3", 1_000_000, 777106));
         App app = new App(atmRepository);
 
         do {
@@ -180,6 +209,9 @@ class SimpleAtm {
                 }
                 case AUTHENTICATED: {
                     app.displayMenu();
+                    break;
+                }
+                case OFFLINE: {
                     break;
                 }
             }

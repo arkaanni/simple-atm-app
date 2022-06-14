@@ -1,17 +1,17 @@
 package org.arkaan.simpleatm.datamodel;
 
 public class Card {
-    private String pin;
+    private Integer pin;
     private final Customer customer;
-    private final String accountNumber;
+    private final Integer accountNumber;
 
-    public Card(String pin, String username, double initialBalance, String accountNumber) {
+    public Card(Integer pin, String username, Integer initialBalance, Integer accountNumber) {
         this.pin = pin;
         customer = new Customer(username, initialBalance);
         this.accountNumber = accountNumber;
     }
 
-    public String getPin() {
+    public Integer getPin() {
         return pin;
     }
 
@@ -19,7 +19,7 @@ public class Card {
         return customer;
     }
 
-    public void setPin(String pin) {
+    public void setPin(Integer pin) {
         this.pin = pin;
     }
 
@@ -27,7 +27,7 @@ public class Card {
         return customer.getBalance();
     }
 
-    public String getAccountNumber() {
+    public Integer getAccountNumber() {
         return accountNumber;
     }
 }

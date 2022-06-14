@@ -1,6 +1,5 @@
 package org.arkaan.simpleatm.datamodel;
 
-import org.arkaan.simpleatm.datamodel.Card;
 import org.arkaan.simpleatm.datamodel.Transaction.Status;
 
 import java.util.ArrayList;
@@ -18,10 +17,10 @@ public class ATMRepository {
         availableAccountList.remove(account);
     }
 
-    public Optional<Card> findOne(String username) {
+    public Optional<Card> findOne(Integer accountNumber) {
         Card result = null;
         for (Card c : availableAccountList) {
-            if (c.getCustomer().getName().equals(username)) {
+            if (c.getAccountNumber().equals(accountNumber)) {
                 result = c;
                 break;
             }
@@ -40,10 +39,11 @@ public class ATMRepository {
         return Optional.ofNullable(result);
     }
 
-    public Status withdrawMoney(double amount, Card card) {
+    public Status withdrawMoney(Integer amount, Card card) {
         Customer customer = card.getCustomer();
         Status status;
         if (amount > customer.getBalance()) {
+            System.out.printf("Insufficient balance: %d", amount);
             status = Status.FAILED;
         } else {
             customer.reduceBalance(amount);
@@ -54,7 +54,7 @@ public class ATMRepository {
         return status;
     }
 
-    public Status depositMoney(double amount, Card card) {
+    public Status depositMoney(Integer amount, Card card) {
         Customer customer = card.getCustomer();
         customer.addBalance(amount);
         customer.addTransaction(
@@ -62,7 +62,7 @@ public class ATMRepository {
         return Status.SUCCESS;
     }
 
-    public Status transferMoney(double amount, Card from, Long to) {
+    public Status transferMoney(Integer amount, Card from, Long to) {
         Optional<Card> byAccountNumber = findByAccountNumber(to);
         Customer sender = from.getCustomer();
         Status status;
