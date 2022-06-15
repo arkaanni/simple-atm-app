@@ -26,7 +26,7 @@ public class Customer {
         return name;
     }
 
-    double getBalance() {
+    Integer getBalance() {
         return balance;
     }
 

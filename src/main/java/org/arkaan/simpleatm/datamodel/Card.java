@@ -23,7 +23,7 @@ public class Card {
         this.pin = pin;
     }
 
-    public double getAccountBalance() {
+    public Integer getAccountBalance() {
         return customer.getBalance();
     }
 

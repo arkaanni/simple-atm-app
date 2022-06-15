@@ -4,7 +4,10 @@ import org.arkaan.simpleatm.datamodel.Card;
 import org.arkaan.simpleatm.datamodel.ATMRepository;
 import org.arkaan.simpleatm.datamodel.Transaction;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Optional;
+import java.util.Random;
 import java.util.Scanner;
 
 public class App {
@@ -18,11 +21,15 @@ public class App {
     private final ATMRepository atmRepository;
     private State state;
     private final Scanner stdIn;
+    private final Random random;
+    private final DateTimeFormatter dateTimeFormatter;
 
     App(ATMRepository atmRepository) {
         this.atmRepository = atmRepository;
         state = State.IDLE;
         stdIn = new Scanner(System.in);
+        random = new Random();
+        dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     }
 
     private void setCurrentUser(Card currentUser) {
@@ -86,16 +93,21 @@ public class App {
                 }
                 break;
             }
+        } else if (amountSelect >= 5) {
+            return;
         } else {
-            amount = amountList[amountSelect];
+            amount = amountList[amountSelect - 1];
         }
         try {
+            String date = LocalDateTime.now().format(dateTimeFormatter);
             Transaction.Status status = atmRepository
-                    .withdrawMoney(amount, currentUser);
+                    .withdrawMoney(amount, currentUser, date);
             if (status == Transaction.Status.FAILED) {
                 System.out.println("Withdraw failed.");
             } else {
-                System.out.println("Success.");
+        	System.out.println("================================");
+                System.out.printf("Summary (%s) %nAmount: $%d %n", date, amount);
+                System.out.println("================================\n");
             }
         } catch (ArrayIndexOutOfBoundsException e) {
             System.out.println("Please select appropriate input.");
@@ -121,27 +133,65 @@ public class App {
 
     private void transferMoney() {
         System.out.println("=================");
-        System.out.println("[  Fund Transfer  ]");
+        System.out.println("||  Transfer  ||");
         System.out.print("Enter account number (destination): ");
-        String recipient = stdIn.next();
+        stdIn.nextLine();
+        String destinationInput = stdIn.nextLine();
+        if (destinationInput.isBlank()) return;
         System.out.print("Enter amount: ");
-        int amount = stdIn.nextInt();
+        String amountInput = stdIn.nextLine();
+        if (amountInput.isBlank()) return;
+        
+        String ref = String.format("%04d", random.nextInt(999999));
+        System.out.println("\n=================================");
+        System.out.printf("Transfer Confirmation %nDestination account\t: %s %nAmount\t\t\t: $%s %nRef. Number\t\t: %s %n",
+        	destinationInput, amountInput, ref);
+        System.out.println("=================================\n");
+        System.out.println("1. Confirm transfer\n2. Cancel");
+        int confirm = stdIn.nextInt();
+        if (confirm == 2) return;
+        
+        if (!destinationInput.matches("^[0-9]+")) {
+            System.out.println("Invalid account");
+            return;
+        }
+        
+        if (!amountInput.matches("^[0-9]+")) {
+            System.out.println("Invalid amount");
+            return;
+        }
+        
+        Integer amount = Integer.valueOf(amountInput);
+        if (amount < 1) {
+            System.out.println("Minimum amount to transfer is $1");
+            return;
+        }
+        
+        if (amount > 1000) {
+            System.out.println("Maximum amount to transfer is $1000");
+            return;
+        }
+        
+        String date = LocalDateTime.now().format(dateTimeFormatter);
+        
         Transaction.Status status = atmRepository
-                .transferMoney(amount, currentUser, Long.valueOf(recipient));
+                .transferMoney(amount, currentUser, destinationInput, ref, date);
         if (status == Transaction.Status.FAILED) {
-            System.out.println("Transfer failed. Please check your account balance or destination number");
+            System.out.println("Transfer failed.\n");
         } else {
-            System.out.println("Transaction success.");
+            System.out.println("\n=================================");
+            System.out.printf("Transfer Summary (%s) %nDestination account\t: %s %nAmount\t\t\t: $%s %nRef. Number\t\t: %s %nBalance\t\t\t: $%d %n",
+            	date, destinationInput, amountInput, ref, currentUser.getAccountBalance());
+            System.out.println("=================================\n");
         }
     }
 
     private void viewTransactionHistory() {
         atmRepository.displayTransactionHistory(currentUser);
-
     }
 
     private void getBalance() {
-        System.out.printf("%s%f\n", "Your balance: Rp. ", currentUser.getAccountBalance());
+        System.out.printf("Your balance: $%d%n%n", currentUser.getAccountBalance());
     }
 
     State getState() {
@@ -154,9 +204,9 @@ public class App {
             System.out.println("=====================");
             System.out.println("||     Welcome     ||");
             System.out.println("=====================");
-            System.out.println("1. Withdraw Money");
-            System.out.println("2. Fund Transfer");
-            System.out.println("3. Deposit Money");
+            System.out.println("1. Withdraw");
+            System.out.println("2. Transfer");
+            System.out.println("3. Deposit");
             System.out.println("4. View Balance");
             System.out.println("5. Transaction History");
             System.out.println("0. Exit");
@@ -196,9 +246,9 @@ class SimpleAtm {
 
     public static void main(String[] args) {
         ATMRepository atmRepository = new ATMRepository();
-        atmRepository.addAccount(new Card(123456, "user1", 1_000_000, 776643));
-        atmRepository.addAccount(new Card(123456, "user2", 1_000_000, 774921));
-        atmRepository.addAccount(new Card(123456, "user3", 1_000_000, 777106));
+        atmRepository.addAccount(new Card(123456, "user1", 1_000, 776643));
+        atmRepository.addAccount(new Card(123456, "user2", 1_000, 774921));
+        atmRepository.addAccount(new Card(123456, "user3", 1_000, 777106));
         App app = new App(atmRepository);
 
         do {
